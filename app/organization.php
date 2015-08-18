@@ -3,6 +3,7 @@
 namespace App;
 
 use Illuminate\Database\Eloquent\Model;
+use Exception;
 
 class Organization extends Model{
 
@@ -11,11 +12,13 @@ class Organization extends Model{
     protected $fillable = ['name', 'country'];
 
 
-    function checkOrganizationIsEmpty($name){
+    function checkOrganization($name){
 
-        $organization = Oraganization::OfName($name);
+        $organization = Organization::OfName($name)->first();
+        if(empty($organization)) {
 
-        return empty($organization)?true:false;
+            throw new Exception("Organization doesnt exists");
+        }
 
     }
 

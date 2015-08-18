@@ -6,8 +6,16 @@
 
   <body>
    <div class="wrapper">
-    <form method="post" class="form-signin">
+
+
+    <form method="post" class="form-signin" novalidate="true">
       <h2 class="form-signin-heading">Please login</h2>
+
+
+        {{ $errors->first("email") }}<br />
+        {{ $errors->first("password") }}<br />
+        {{$errors->first("error") }}<br />
+
       <input type="text" class="form-control" name="email" placeholder="Email Address" required="" autofocus="" />
       <input type="password" class="form-control" name="password" placeholder="Password" required=""/>      
       <label class="checkbox">

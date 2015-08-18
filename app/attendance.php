@@ -8,16 +8,18 @@ use App\Exceptions\DateRequiredException as DateRequiredException;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\DB;
 use App\Month;
+use Exception;
 
 class Attendance extends Model
 {
 
     protected $table = 'attendances';
 
-    protected $fillable = ['date', 'check_in', 'check_out', 'member_id'];
+    protected $fillable = ['date', 'check_in', 'check_out', 'member_id','month_id'];
+    protected $appends = ['working_hours'];
 
 
-    public static $checkInFlag = 0;
+
 
     function member()
     {
@@ -43,10 +45,19 @@ class Attendance extends Model
     function getWorkingHoursAttribute()
     {
 
-        $diff = date(" H:i:s", $this->check_in - $this->check_out);
-        return $diff;
+        $in = strtotime($this->check_in);
+        $out = strtotime($this->check_out);
+        $seconds= round(abs($out - $in));
 
-    }
+        $minutes = floor($seconds / 60);
+        $seconds %= 60;
+
+        $hours = floor($minutes /60);
+        $minutes %= 60;
+        $sum =[$hours,$minutes,$seconds];
+        return implode(":",$sum);
+
+           }
 
 
     function scopeForMember($query, $memberId) {
@@ -56,33 +67,77 @@ class Attendance extends Model
 
     function scopeDateBetween($query, $startDate,$endDate) {
          return $query->whereRaw("date BETWEEN '$startDate' AND '$endDate' ");
+
     }
 
-    function scopeForAllMonth($query){
-
-        return $query->select(DB::raw('month_id, count(id) as days_count GROUP BY month_id'));
+    function scopeForUniqueCheck($query,$memberId,$date)
+    {
+        return $query->where('date','=',$date)->whereMemberId($memberId);
     }
 
-    function create($data)
+
+//    function scopeForAllMonth($query){
+//
+//        return $query->select(DB::raw('month_id, count(id) as days_count GROUP BY month_id'));
+//    }
+
+    function make($data)
     {
 
-        if (array_key_exists('check_in', $data)) {
-            $this->checkInFlag = 1;
+        $month = Month::ForMonth( 'January')->first();
 
-            $month = Month::where('name', $data['month'])->first();
-            $config[month_id] = $month->id;
-            $config['member_id'] = Session::get(memberId);
-            $config['date'] = $data['date'];
+        $config['month_id'] = $month->id;
+
+        $config['member_id'] =Session::get('memberId');
+        $config['date'] = $data['date'];
+
+        if (array_key_exists('check_in', $data)) {
+
+
+
+            $config['check_in']=$data['check_in'];
+            $attendance=Attendance::ForUniqueCheck( $config['member_id'],$config['date'])->first();
+            if(empty($attendance)) {
+                Attendance::create($config);
+                         }
+            else{
+                throw new Exception('You Already have check In for the day');
+
+            }
+
         }
+
+
+        if (array_key_exists('check_out', $data)) {
+
+            $config['check_out']=$data['check_out'];
 
 //        foreach($data as  $key => $value)
 //        {
 //            $this->is_empty($value);
 //        }
-        $this->is_valid($this->checkInFlag);
+//        $this->is_valid($this->checkInFlag);
+            $attendance=Attendance::ForUniqueCheck( $config['member_id'],$config['date'])->first();
 
-        $Attendance = Attendance::firstOrCreate($config);
-        $Attendance->update($data);
+
+            if(empty($attendance)){
+
+
+                throw new Exception('You Havent check in yet');
+            }
+            if($attendance->check_out === '00:00:00') {
+
+                $attendance->update($data);
+
+            }
+            else{
+
+                throw new Exception('You Already have check out for the day');
+            }
+        }
+
+
+
 
     }
 
@@ -93,15 +148,7 @@ class Attendance extends Model
 //        }
 
 
-    function is_valid($checkInFlag)
-    {
 
-        if ($checkInFlag === 0) {
-            throw new DateInvalidException("You should check in before check out");
-
-        }
-
-    }
 
 
 

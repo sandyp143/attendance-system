@@ -17,7 +17,13 @@ Route::get('/', function () {
 });
 
 Route::any('login', 'LoginController@login');
-    
+Route::get('/check', 'AttendanceController@setAttendance');
+Route::get('/attendance/{member}', 'AttendanceController@getAttendance');
+Route::get('/register','LoginController@register');
+Route::get('/auth/dashboard', function () {
+    return view('dashboard');
+
+});
 
 
 
